@@ -1,34 +1,68 @@
 #include <iostream>
-#include <cstdlib>
 #include "window.hh"
+#include "renderer.hh"
+#include "timer.hh" // добавим позже
 
 int main() {
-    setenv("GLFW_DEBUG", "1", 0);
-    std::cout << "Initializing GLFW..." << std::endl;
-    glfwSetErrorCallback([](int error, const char* description) {
-        std::cerr << "GLFW Error " << error << ": " << description << std::endl;
+    glfwSetErrorCallback([](int error, const char* desc) {
+        std::cerr << "GLFW error: " << error << " - " << desc << std::endl;
     });
 
-    try {
-        std::cout << "Creating window..." << std::endl;
-        bromo::Window window(800, 600, "Bromo Vulkan Window");
-        std::cout << "Window created. Handle: " << window.Handle() << std::endl;
-        glfwShowWindow(window.Handle());
-        glfwFocusWindow(window.Handle());
-        glfwSetWindowPos(window.Handle(), 100, 100);
-        std::cout << "Entering loop..." << std::endl;
-        while (!window.ShouldClose()) {
-            window.PollEvents();
-
-            // Здесь потом будем рендерить
-        }
-
-        // Явно завершаем GLFW (если не сделано в деструкторе)
-        glfwTerminate();
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return EXIT_FAILURE;
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
+        return -1;
     }
 
-    return EXIT_SUCCESS;
+    try {
+        bromo::Window window(800, 600, "Bromo Vulkan");
+        glfwShowWindow(window.Handle());
+        Renderer renderer(window.Handle(), window.Width(), window.Height());
+        std::cout << "Renderer initialized, starting loop..." << std::endl;
+
+        Timer timer;
+        int frameCount = 0;
+
+        while (!window.ShouldClose()) {
+            // Выход по Escape
+
+            int keyState = glfwGetKey(window.Handle(), GLFW_KEY_ESCAPE);
+            if (keyState == GLFW_PRESS) {
+                std::cout << "Escape pressed!" << std::endl;
+                glfwSetWindowShouldClose(window.Handle(), true);
+            }
+
+            if (glfwGetKey(window.Handle(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+                glfwSetWindowShouldClose(window.Handle(), true);
+            }
+
+            if (window.WasResized()) {
+                            renderer.Resize(window.Width(), window.Height());
+                            window.ResetResizedFlag();
+                        }
+
+            double dt = timer.Mark();
+            renderer.DrawFrame();
+            window.PollEvents();
+
+            // Простейший замер FPS
+            frameCount++;
+            if (timer.Elapsed() >= 1.0) {
+                    std::cout << "FPS: " << frameCount << ", dt: " << dt * 1000.0 << " ms" << std::endl;
+                    frameCount = 0;
+                    timer.Reset();
+                }
+
+            // Небольшая задержка для снижения нагрузки CPU (можно убрать)
+            //std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        }
+
+        vkDeviceWaitIdle(renderer.Device());
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwTerminate();
+    return 0;
 }

@@ -34,6 +34,9 @@ public:
 private:
     // статические колбэки glfw
     static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
+    static void ResizeCb(GLFWwindow* w, int width, int height);
+    static void FocusCb(GLFWwindow* w, int focused);
+    static void KeyCb(GLFWwindow* w, int key, int scancode, int action, int mods);
 
     GLFWwindow* window_ = nullptr;
     int width_ = 0;

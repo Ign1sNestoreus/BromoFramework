@@ -59,13 +59,19 @@ Renderer::Renderer(GLFWwindow* window, int width, int height)
     CreateFramebuffers();
     CreateCommandPool();
     CreateSyncObjects();
-    CreateCommandBuffer();
+    CreateCommandBuffers();
 }
 
 Renderer::~Renderer() {
     // Ждём завершения всех операций устройства
     if (m_device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(m_device);
+
+        if (m_commandPool != VK_NULL_HANDLE && !m_commandBuffers.empty()) {
+            vkFreeCommandBuffers(m_device, m_commandPool,
+                                 static_cast<uint32_t>(m_commandBuffers.size()),
+                                 m_commandBuffers.data());
+        }
 
         // Уничтожение в обратном порядке создания
         // Уничтожение синхронизации
@@ -104,6 +110,65 @@ Renderer::~Renderer() {
 
     if (m_instance != VK_NULL_HANDLE)
         vkDestroyInstance(m_instance, nullptr);
+}
+
+void Renderer::Resize(int width, int height) {
+    RecreateSwapchain(width, height);
+}
+
+void Renderer::RecreateSwapchain(int width, int height) {
+    // Ждём завершения всех операций на устройстве
+    vkDeviceWaitIdle(m_device);
+
+    // Сохраняем старые размеры и обновляем новыми
+    int oldWidth = m_width;
+    int oldHeight = m_height;
+    m_width = width;
+    m_height = height;
+
+    // Уничтожаем зависимые от swapchain объекты в обратном порядке
+    for (auto framebuffer : m_swapchainFramebuffers) {
+        vkDestroyFramebuffer(m_device, framebuffer, nullptr);
+    }
+    m_swapchainFramebuffers.clear();
+
+    for (auto imageView : m_swapchainImageViews) {
+        vkDestroyImageView(m_device, imageView, nullptr);
+    }
+    m_swapchainImageViews.clear();
+
+    vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+
+    // Пересоздаём swapchain и связанные объекты
+    CreateSwapchain();
+    CreateImageViews();
+    CreateFramebuffers();
+
+    // Проверяем, изменилось ли количество изображений в swapchain
+    if (m_swapchainImages.size() != m_imageAvailableSemaphores.size()) {
+        // Уничтожаем старые объекты синхронизации
+        for (size_t i = 0; i < m_imageAvailableSemaphores.size(); i++) {
+            vkDestroySemaphore(m_device, m_imageAvailableSemaphores[i], nullptr);
+            vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
+            vkDestroyFence(m_device, m_inFlightFences[i], nullptr);
+        }
+        m_imageAvailableSemaphores.clear();
+        m_renderFinishedSemaphores.clear();
+        m_inFlightFences.clear();
+
+        // Создаём новые
+        CreateSyncObjects();
+
+        // Пересоздаём командные буферы
+        vkFreeCommandBuffers(m_device, m_commandPool,
+                             static_cast<uint32_t>(m_commandBuffers.size()),
+                             m_commandBuffers.data());
+        m_commandBuffers.clear();
+        CreateCommandBuffers();
+    }
+
+    // Сбрасываем индекс текущего кадра (на всякий случай)
+    m_currentFrame = 0;
 }
 
 void Renderer::CreateInstance() {
@@ -413,8 +478,8 @@ void Renderer::CreateCommandPool() {
     VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool), "Failed to create command pool!");
 }
 
-void Renderer::CreateCommandBuffer() {
-    size_t framesInFlight = m_imageAvailableSemaphores.size(); // или отдельная переменная
+void Renderer::CreateCommandBuffers() {
+    size_t framesInFlight = m_swapchainImages.size(); // или отдельная переменная
     m_commandBuffers.resize(framesInFlight);
 
     VkCommandBufferAllocateInfo allocInfo{};
@@ -456,11 +521,11 @@ void Renderer::DrawFrame() {
     vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrame]);
 
     uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
-                                                m_imageAvailableSemaphores[m_currentFrame],
-                                                VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX,
+                                            m_imageAvailableSemaphores[m_currentFrame],
+                                            VK_NULL_HANDLE, &imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        // В реальном приложении нужно пересоздать swapchain, но пока игнорируем
+        RecreateSwapchain(m_width, m_height);
         return;
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("Failed to acquire swapchain image!");
@@ -516,7 +581,7 @@ void Renderer::DrawFrame() {
 
     result = vkQueuePresentKHR(m_presentQueue, &presentInfo);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        // Обработка устаревания swapchain (пока игнорируем)
+        RecreateSwapchain(m_width, m_height);
     } else if (result != VK_SUCCESS) {
         throw std::runtime_error("Failed to present swapchain image!");
     }

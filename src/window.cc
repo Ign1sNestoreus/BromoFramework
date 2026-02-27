@@ -39,6 +39,9 @@ Window::Window(int width, int height, const std::string& title) {
 
     // Устанавливаем колбэк изменения размера фреймбуфера
     glfwSetFramebufferSizeCallback(window_, FramebufferResizeCallback);
+    glfwSetWindowSizeCallback(window_, ResizeCb);
+    glfwSetWindowFocusCallback(window_, FocusCb);
+    glfwSetKeyCallback(window_, KeyCb);
 
     // Получаем реальные размеры (могут отличаться от запрошенных)
     glfwGetFramebufferSize(window_, &width_, &height_);
@@ -89,6 +92,40 @@ void Window::FramebufferResizeCallback(GLFWwindow* window, int width, int height
         win->width_ = width;
         win->height_ = height;
         win->resized_ = true;
+    }
+}
+
+void Window::ResizeCb(GLFWwindow* w, int width, int height) {
+    auto* window = static_cast<Window*>(glfwGetWindowUserPointer(w));
+    if (window) {
+        window->width_ = width;
+        window->height_ = height;
+        window->resized_ = true;
+        std::cout << "Window resized to " << width << "x" << height << std::endl;
+    }
+}
+
+void Window::FocusCb(GLFWwindow* w, int focused) {
+    auto* window = static_cast<Window*>(glfwGetWindowUserPointer(w));
+    if (window) {
+        std::cout << "Window " << (focused ? "gained" : "lost") << " focus" << std::endl;
+    }
+}
+
+void Window::KeyCb(GLFWwindow* w, int key, int scancode, int action, int mods) {
+    auto* window = static_cast<Window*>(glfwGetWindowUserPointer(w));
+    if (!window) return;
+
+    if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+        std::cout << "Key pressed: " << key << " (";
+        if (key == GLFW_KEY_ESCAPE) std::cout << "ESCAPE";
+        else std::cout << char(key);
+        std::cout << ")" << std::endl;
+
+        // Закрытие окна по Escape
+        if (key == GLFW_KEY_ESCAPE) {
+            glfwSetWindowShouldClose(w, true);
+        }
     }
 }
 

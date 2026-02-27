@@ -16,6 +16,7 @@ public:
     Renderer& operator=(const Renderer&) = delete;
 
     void DrawFrame();
+    void Resize(int width, int height);
     VkDevice Device() const;  // для ожидания в main
 
 private:
@@ -29,8 +30,9 @@ private:
     void CreateRenderPass();
     void CreateFramebuffers();
     void CreateCommandPool();
-    void CreateCommandBuffer();
+    void CreateCommandBuffers();
     void CreateSyncObjects();
+    void RecreateSwapchain(int width, int height);
 
     // Поиск семейств очередей
     struct QueueFamilyIndices {
