@@ -1,10 +1,12 @@
 #pragma once
 
+#include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include <vector>
 #include <optional>
+#include <string>
 //#include <functional>
 
 class Renderer {
@@ -34,6 +36,12 @@ private:
     void CreateSyncObjects();
     void RecreateSwapchain(int width, int height);
 
+    void CreateUniformBuffer();
+    void CreateDescriptorSetLayout();
+    void CreateDescriptorPool();
+    void CreateDescriptorSet();
+    void UpdateUniformBuffer(uint32_t currentImage);
+
     // Поиск семейств очередей
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
@@ -59,9 +67,27 @@ private:
     bool CheckValidationLayerSupport();
     std::vector<const char*> GetRequiredExtensions() const;
 
+    VkShaderModule CreateShaderModule(const std::vector<char>& code);
+    void CreateGraphicsPipeline();
+    std::vector<char> ReadFile(const std::string& filename) const;
+
+    void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize);
+
+    // В private-секцию:
+    VkBuffer m_uniformBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory m_uniformBufferMemory = VK_NULL_HANDLE;
+    void* m_uniformBufferMapped = nullptr;
+
+    VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
+    VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
+
     // Члены класса
     GLFWwindow* m_window;
     int m_width, m_height;
+
+    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_graphicsPipeline = VK_NULL_HANDLE;
 
     VkInstance m_instance = VK_NULL_HANDLE;
     VkSurfaceKHR m_surface = VK_NULL_HANDLE;
@@ -86,6 +112,25 @@ private:
     std::vector<VkSemaphore> m_renderFinishedSemaphores;
     std::vector<VkFence> m_inFlightFences;
     size_t m_currentFrame = 0;
+
+    // В private-секцию Renderer:
+    VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory m_vertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer m_indexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory m_indexBufferMemory = VK_NULL_HANDLE;
+    uint32_t m_indexCount = 0;
+
+    // Вспомогательная функция для поиска подходящего типа памяти
+    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+    // Создание буфера
+    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+
+    // Копирование данных в буфер
+    void CopyDataToBuffer(VkDeviceMemory bufferMemory, const void* data, VkDeviceSize size);
+
+    // Создание вершинного и индексного буфера для куба
+    void CreateCubeBuffers();
 
     // Константы для слоёв валидации
     const std::vector<const char*> m_validationLayers = {
