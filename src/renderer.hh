@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sys/types.h>
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -16,6 +17,8 @@ public:
 
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
+
+    void LoadModel(const std::string& filename);
 
     void DrawFrame();
     void Resize(int width, int height);
@@ -41,6 +44,22 @@ private:
     void CreateDescriptorPool();
     void CreateDescriptorSet();
     void UpdateUniformBuffer(uint32_t currentImage);
+
+    void CreateTextureImage(const char* filename);
+    void CreateTextureImageView();
+    void CreateTextureSampler();
+
+    void CreateDepthResources();
+
+    void TransitionImageLayout(VkImage, VkFormat, VkImageLayout, VkImageLayout);
+
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+    VkCommandBuffer BeginSingleTimeCommands();
+    void EndSingleTimeCommands(VkCommandBuffer);
+
+    VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+    VkFormat FindDepthFormat();
 
     // Поиск семейств очередей
     struct QueueFamilyIndices {
@@ -112,6 +131,17 @@ private:
     std::vector<VkSemaphore> m_renderFinishedSemaphores;
     std::vector<VkFence> m_inFlightFences;
     size_t m_currentFrame = 0;
+
+    // В private-секцию:
+    VkImage m_textureImage = VK_NULL_HANDLE;
+    VkDeviceMemory m_textureImageMemory = VK_NULL_HANDLE;
+    VkImageView m_textureImageView = VK_NULL_HANDLE;
+    VkSampler m_textureSampler = VK_NULL_HANDLE;
+
+    // В private-секцию Renderer:
+    VkImage m_depthImage = VK_NULL_HANDLE;
+    VkDeviceMemory m_depthImageMemory = VK_NULL_HANDLE;
+    VkImageView m_depthImageView = VK_NULL_HANDLE;
 
     // В private-секцию Renderer:
     VkBuffer m_vertexBuffer = VK_NULL_HANDLE;

@@ -2,15 +2,18 @@
 
 layout(location = 0) in vec3 fragPos;
 layout(location = 1) in vec3 fragNormal;
-layout(location = 2) in vec3 fragLightPos;
-layout(location = 3) in vec3 fragViewPos;
-layout(location = 4) in vec3 fragLightColor;
+layout(location = 2) in vec2 fragTexCoord;
+layout(location = 3) in vec3 fragLightPos;
+layout(location = 4) in vec3 fragViewPos;
+layout(location = 5) in vec3 fragLightColor;
+
+layout(binding = 1) uniform sampler2D texSampler; // добавили
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    // Материал (можно тоже передавать через uniform, но для простоты зададим)
-    vec3 objectColor = vec3(0.6, 0.8, 1.0); // голубоватый
+    vec3 objectColor = texture(texSampler, fragTexCoord).rgb; // цвет из текстуры
+
     float ambientStrength = 0.1;
     float diffuseStrength = 1.0;
     float specularStrength = 0.5;
