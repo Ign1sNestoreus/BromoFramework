@@ -4,6 +4,7 @@
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <vector>
 #include <optional>
@@ -19,6 +20,10 @@ public:
     Renderer& operator=(const Renderer&) = delete;
 
     void LoadModel(const std::string& filename);
+
+    void SetViewMatrix(const glm::mat4& view);
+    void SetProjectionMatrix(const glm::mat4& proj);
+    void SetCameraPosition(const glm::vec3& pos);
 
     void DrawFrame();
     void Resize(int width, int height);
@@ -104,6 +109,10 @@ private:
     // Члены класса
     GLFWwindow* m_window;
     int m_width, m_height;
+
+    glm::mat4 m_viewMatrix;
+    glm::mat4 m_projMatrix;
+    glm::vec3 m_cameraPos;
 
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     VkPipeline m_graphicsPipeline = VK_NULL_HANDLE;

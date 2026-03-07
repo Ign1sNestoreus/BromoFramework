@@ -284,6 +284,14 @@ VkFormat Renderer::FindDepthFormat() {
     );
 }
 
+void Renderer::SetViewMatrix(const glm::mat4& view) {
+    m_viewMatrix = view;
+}
+
+void Renderer::SetProjectionMatrix(const glm::mat4& proj) {
+    m_projMatrix = proj;
+}
+
 void Renderer::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -435,17 +443,13 @@ void Renderer::UpdateUniformBuffer(uint32_t currentImage) {
     // model: вращаем объект (можно оставить вращение, а можно убрать)
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-    // view: камера
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-    // proj: перспектива
-    ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(m_width) / static_cast<float>(m_height), 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1; // для Vulkan
+    ubo.view = m_viewMatrix;
+    ubo.proj = m_projMatrix;
 
     // свет
     ubo.lightPos = glm::vec3(1.0f, 2.0f, 1.0f);
     ubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-    ubo.viewPos = glm::vec3(2.0f, 2.0f, 2.0f);
+    ubo.viewPos = m_cameraPos;
 
     // смещение текстуры — "едущая" вправо со скоростью 0.5 единиц в секунду
     float speed = 0.5f;
@@ -775,7 +779,7 @@ bool Renderer::CheckValidationLayerSupport() {
 }
 
 Renderer::Renderer(GLFWwindow* window, int width, int height)
-    : m_window(window), m_width(width), m_height(height) {
+    : m_window(window), m_width(width), m_height(height), m_viewMatrix(1.0f), m_projMatrix(1.0f) {
     CreateInstance();
     CreateSurface();
     PickPhysicalDevice();
@@ -1014,6 +1018,11 @@ void Renderer::PickPhysicalDevice() {
         throw std::runtime_error("No suitable GPU found!");
     }
 }
+
+void Renderer::SetCameraPosition(const glm::vec3& pos)
+{
+    m_cameraPos = pos;
+};
 
 void Renderer::CreateLogicalDevice() {
     QueueFamilyIndices indices = FindQueueFamilies(m_physicalDevice);
