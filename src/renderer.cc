@@ -31,17 +31,18 @@ namespace {
 }
 
 struct UniformBufferObject {
-    glm::mat4 model;          // 64 байт (16 * 4)
+    glm::mat4 model;          // 64
     glm::mat4 view;           // 64
     glm::mat4 proj;           // 64
     glm::vec3 lightPos;       // 12
-    float pad1;               // 4 (выравнивание до 16)
+    float pad1;               // 4
     glm::vec3 lightColor;     // 12
     float pad2;               // 4
     glm::vec3 viewPos;        // 12
     float pad3;               // 4
     glm::vec2 texOffset;      // 8
-    float pad4[2];            // 8 (выравнивание до 16) — обеспечивает общий размер, кратный 16
+    float time;               // 4
+    float pad4;               // 4 (выравнивание до 16)
 };
 
 struct Vertex {
@@ -449,6 +450,8 @@ void Renderer::UpdateUniformBuffer(uint32_t currentImage) {
     // смещение текстуры — "едущая" вправо со скоростью 0.5 единиц в секунду
     float speed = 0.5f;
     ubo.texOffset = glm::vec2(time * speed, 0.0f);
+
+    ubo.time = time;
 
     memcpy(m_uniformBufferMapped, &ubo, sizeof(ubo));
 }
